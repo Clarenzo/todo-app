@@ -1,9 +1,19 @@
 import { useState, type FormEvent } from "react"
-import type { Task } from "./types/task"
+import type { Priority, Task } from "./types/task"
+
+const priorityColors: Record<Priority, string> = {
+  low: 'bg-emerald-950 text-emerald-300',
+  medium: 'bg-amber-950 text-amber-300',
+  high: 'bg-rose-950 text-rose-300',
+}
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([])
+
   const [title, setTitle] = useState("")
+  const [description, setDescription] = useState("")
+  const [dueDate, setDueDate] = useState("")
+  const [priority, setPriority] = useState<Priority>("medium")
   const [addError, setAddError] = useState("")
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -25,11 +35,17 @@ function App() {
     const newTask: Task = {
       id: crypto.randomUUID(),
       title: trimmedTitle,
+      description: description.trim(),
+      dueDate,
+      priority,
       completed: false,
     }
 
     setTasks((currentTasks) => [...currentTasks, newTask])
     setTitle("")
+    setDescription("")
+    setDueDate("")
+    setPriority("medium")
     setAddError("")
   }
 
@@ -100,31 +116,79 @@ function App() {
           className="rounded-2xl border border-slate-700 bg-slate-900 p-5"
         >
           <label htmlFor="task-title" className="block font-medium">
-            New Task
+            Task Title
           </label>
 
-          <div className="mt-3 flex flex-col gap-3 sm:flow-row">
             <input
               id="task-title"
               type="text"
               value={title}
-              onChange={(event) => setTitle(event.target.value)}
+              onChange={(event) => { 
+                setTitle(event.target.value) 
+                setAddError('') 
+              }}
+              aria-invalid = {Boolean(addError)}
+              aria-describedby={addError ? "add-task-error" : undefined}
               placeholder="e.g. Finish my project outline"
-              className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-slate-100 placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none"
+              className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-slate-100 placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none"
             />
+
+            {addError && (
+              <p id="add-task-error" role="alert" className="mt-2 text-sm text-rose-400">
+                {addError}
+              </p>
+            )}
+
+            <label htmlFor="task-description" className="mt-4 block font-medium">
+              Description <span className="text-slate-400">(optional)</span>
+            </label>
+            <textarea 
+              id="task-description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              rows={2}
+              placeholder="Add more detail about this task"
+              className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-slate-100 placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none"
+            />
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="task-priority" className="block font-medium">
+                  Priority
+                </label>
+                <select
+                  id="task-priority"
+                  value={priority}
+                  onChange={(event) => setPriority(event.target.value as Priority)
+                  }
+                  className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="task-due-date" className="block font-medium">
+                  Due date <span className="text-slate-400">(optional)</span>
+                </label>
+                <input
+                  id="task-due-date"
+                  type="date"
+                  value={dueDate}
+                  onChange={(event) => setDueDate(event.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none"
+                />
+              </div>
+            </div>
+
             <button
               type="submit"
-              className="rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+              className="mt-5 rounded-lg bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
             >
               Add task
             </button>
-          </div>
-
-          {addError && (
-            <p id="add-task-error" role="alert" className="mt-2 text-sm text-rose-400">
-              {addError}
-            </p>
-          )}
         </form>
 
         <section aria-labelledby="task-list-heading" className="mt-8">
@@ -141,7 +205,7 @@ function App() {
             <p className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-slate-400">
               No tasks yet. Add your first one above.
             </p>
-          ): (
+          ) : (
             <ul className="space-y-3">
               {tasks.map((task) => (
                 <li
@@ -153,7 +217,7 @@ function App() {
                       <label htmlFor={`edit-task-${task.id}`}
                         className="block text-sm font-medium"
                       >
-                        Edit task
+                        Edit task title
                       </label>
                       <input
                         id={`edit-task-${task.id}`}
@@ -199,12 +263,14 @@ function App() {
                     </form>
                   ) : (
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <label className="flex min-w-0 items-center gap-3">
+
+                      <div className="min-w-0 flex-1">
+                      <label className="flex items-start gap-3">
                         <input
                           type="checkbox"
                           checked={task.completed}
                           onChange={() => handleToggleTask(task.id)}
-                          className="h-5 w-5 shrink-0 accent-cyan-400"
+                          className="mt-0.5 h-5 w-5 shrink-0 accent-cyan-400"
                         />
                         <span
                           className={`min-w-0 wrap-break-word ${
@@ -216,6 +282,24 @@ function App() {
                           {task.title}
                         </span>
                       </label>
+
+                      {task.description && (
+                        <p className="mt-2 wrap-break-word pl-8 text-sm text-slate-400">
+                          {task.description}
+                        </p>
+                      )}
+
+                        <div className="mt-3 flex flex-wrap gap-2 pl-8 text-xs">
+                          <span className={`rounded-full px-2.5 py-1 ${priorityColors[task.priority]}`}>
+                            {task.priority} priority
+                          </span>
+                          {task.dueDate && (
+                            <span className="rounded-full bg-slate-800 px-2.5 py-1 text-slate-300">
+                              Due: {task.dueDate}
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
                       <div className="flex gap-2 self-end sm:flex-auto">
                         <button
