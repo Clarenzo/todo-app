@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import type { Priority, Task } from "./types/task"
+import { loadTasks, saveTasks } from "./lib/taskStorage"
 
 const priorityColors: Record<Priority, string> = {
   low: 'bg-emerald-950 text-emerald-300',
@@ -8,7 +9,11 @@ const priorityColors: Record<Priority, string> = {
 }
 
 function App() {
-  const [tasks, setTasks] = useState<Task[]>([])
+  const [tasks, setTasks] = useState<Task[]>(loadTasks)
+
+  useEffect(() => {
+    saveTasks(tasks)
+  }, [tasks])
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
