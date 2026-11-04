@@ -1,6 +1,9 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useState, type DragEvent, type FormEvent } from "react"
 import type { Priority, Task } from "./types/task"
 import { loadTasks, saveTasks } from "./lib/taskStorage"
+
+type StatusFilter = 'all' | 'active' | 'completed'
+type PriorityFilter = Priority | 'all'
 
 const priorityColors: Record<Priority, string> = {
   low: 'bg-emerald-950 text-emerald-300',
@@ -23,9 +26,35 @@ function App() {
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState("")
+  const [editDescription, setEditDescription] = useState("")
+  const [editDueDate, setEditDueDate] = useState("")
+  const [editPriority, setEditPriority] = useState<Priority>("medium")
   const [editError, setEditError] = useState("")
 
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all")
+
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
+
+
+  const canReorder = 
+    statusFilter === 'all' && priorityFilter === 'all'
+
+  const canDrag = canReorder && editingId === null
+  
   const completedCount = tasks.filter((task) => task.completed).length
+
+  const visibleTasks = tasks.filter((task) => {
+    const matchesStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'completed' ? task.completed : !task.completed)
+
+    const matchesPriority = 
+      priorityFilter === 'all' || task.priority === priorityFilter
+
+    return matchesStatus && matchesPriority
+  })
 
   function handleAddTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -65,12 +94,18 @@ function App() {
   function startEditing(task: Task) {
     setEditingId(task.id)
     setEditTitle(task.title)
+    setEditDescription(task.description)
+    setEditDueDate(task.dueDate)
+    setEditPriority(task.priority)
     setEditError("")
   }
 
   function cancelEditing() {
     setEditingId(null)
     setEditTitle("")
+    setEditDescription("")
+    setEditDueDate("")
+    setEditPriority("medium")
     setEditError("")
   }
 
@@ -90,7 +125,15 @@ function App() {
 
     setTasks((currentTasks) => 
       currentTasks.map((task) => 
-        task.id === editingId ? { ...task, title: trimmedTitle } : task,
+        task.id === editingId
+          ? { 
+              ...task,
+              title: trimmedTitle,
+              description: editDescription.trim(),
+              dueDate: editDueDate,
+              priority: editPriority,
+            }
+          : task,
       ),
     )
 
@@ -101,6 +144,83 @@ function App() {
     setTasks((currentTasks) => 
       currentTasks.filter((task) => task.id !== id),
     )
+  }
+
+  function moveTask(sourceId: string, targetId: string) {
+    if (sourceId === targetId) {
+      return
+    }
+
+    setTasks((currentTasks) => {
+      const sourceIndex = currentTasks.findIndex(
+        (task) => task.id === sourceId,
+      )
+      const targetIndex = currentTasks.findIndex(
+        (task) => task.id === targetId,
+      )
+
+      if (sourceIndex === -1 || targetIndex === -1) {
+        return currentTasks
+      }
+
+      const reorderedTasks = [...currentTasks]
+      const [movedTask] = reorderedTasks.splice(sourceIndex, 1)
+      reorderedTasks.splice(targetIndex, 0, movedTask)
+
+      return reorderedTasks
+    })
+  }
+
+  function moveTaskByOffset(id: string, offset: number) {
+    if (!canReorder) {
+      return
+    }
+
+    const currentIndex = tasks.findIndex((task) => task.id === id)
+    const neighbor = tasks[currentIndex + offset]
+
+    if (neighbor) {
+      moveTask(id, neighbor.id)
+    }
+  }
+
+  function handleDragStart(event: DragEvent<HTMLSpanElement>, id: string) {
+    if (!canDrag) {
+      event.preventDefault()
+      return
+    }
+
+    setDraggedTaskId(id)
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', id)
+  }
+
+  function handleDragOver(event: DragEvent<HTMLLIElement>, id: string) {
+    if (!canDrag || draggedTaskId === null || draggedTaskId === id) {
+      return
+    }
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+
+    if (dropTargetId !== id) {
+      setDropTargetId(id)
+    }
+  }
+
+  function handleDrop(event: DragEvent<HTMLLIElement>, targetId: string) {
+    if (!canDrag || draggedTaskId === null) {
+      return
+    }
+
+    event.preventDefault()
+    moveTask(draggedTaskId, targetId)
+    handleDragEnd()
+  }
+
+  function handleDragEnd() {
+    setDraggedTaskId(null)
+    setDropTargetId(null)
   }
 
   return (
@@ -206,23 +326,82 @@ function App() {
             </span>
           </div>
 
+          <div className="mb-4 grid gap-3 rounded-xl border border-slate-700 bg-slate-900 p-4 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="status-filter"
+                className="block text-sm font-medium"              
+              >
+                Status
+              </label>
+              <select
+                id="status-filter"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as StatusFilter)
+                }
+                className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 focus:border-cyan-400 focus:outline-none"
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="priority-filter"
+                className="block text-sm font-medium"
+              >
+                Priority
+              </label>
+              <select
+                id="priority-filter"
+                value={priorityFilter}
+                onChange={(event) => 
+                  setPriorityFilter(event.target.value as PriorityFilter)
+                }
+                className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 focus:border-cyan-400 focus:outline-none"
+              >
+                <option value="all">All priorities</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+
+          {!canReorder && tasks.length > 1 && (
+            <p className="mb-4 text-sm text-slate-400">
+              Set both filters to All to reorder tasks.
+            </p>
+          )}
+
           {tasks.length === 0 ? (
             <p className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-slate-400">
               No tasks yet. Add your first one above.
             </p>
+          ) : visibleTasks.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-slate-400">
+              No tasks match these filters. Try changing a filter.
+            </p>
           ) : (
             <ul className="space-y-3">
-              {tasks.map((task) => (
+              {visibleTasks.map((task, index) => (
                 <li
                   key={task.id}
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-5 py-4"
+                  onDragOver={(event) => handleDragOver(event, task.id)}
+                  onDrop={(event) => handleDrop(event, task.id)}
+                  className={`rounded-xl border bg-slate-900 px-5 py-4 ${
+                    dropTargetId === task.id ? 'border-cyan-400' : 'border-slate-700'
+                  } ${draggedTaskId === task.id ? 'opacity-50' : ''}`}
                 >
                   {editingId === task.id ? (
                     <form onSubmit={handleSaveEdit}>
                       <label htmlFor={`edit-task-${task.id}`}
                         className="block text-sm font-medium"
                       >
-                        Edit task title
+                        Task title
                       </label>
                       <input
                         id={`edit-task-${task.id}`}
@@ -250,7 +429,64 @@ function App() {
                         </p>
                       )}
 
-                      <div className="mt-3 flex gap-3">
+                      <label
+                        htmlFor={`edit-description-${task.id}`}
+                        className="mt-4 block text-sm font-medium"
+                      >
+                        Description (optional)
+                      </label>
+                      <textarea
+                        id={`edit-description-${task.id}`}
+                        value={editDescription}
+                        onChange={(event) => 
+                          setEditDescription(event.target.value)
+                        }
+                        rows={2}
+                        className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-slate-100 focus:border-cyan-400 focus:outline-none"
+                      />
+
+                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <label
+                            htmlFor={`edit-priority-${task.id}`}
+                            className="block text-sm font-medium"
+                          >
+                            Priority
+                          </label>
+                          <select
+                            id={`edit-priority-${task.id}`}
+                            value={editPriority}
+                            onChange={(event) => 
+                              setEditPriority(event.target.value as Priority)
+                            }
+                            className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 focus:border-cyan-400 focus:outline-none"
+                          >
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label
+                            htmlFor={`edit-due-date-${task.id}`}
+                            className="block text-sm font-medium"
+                          >
+                            Due Date (optional)
+                          </label>
+                          <input
+                            id={`edit-due-date-${task.id}`}
+                            type="date"
+                            value={editDueDate}
+                            onChange={(event) => 
+                              setEditDueDate(event.target.value)
+                            }
+                            className="mt-2 w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-slate-100 focus:border-cyan-400 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
                         <button
                           type="submit"
                           className="rounded-lg bg-cyan-400 px-4 py-2 font-semibold text-slate-950 hover:bg-cyan-300"
@@ -306,7 +542,42 @@ function App() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2 self-end sm:flex-auto">
+                      <div className="flex gap-2 self-end sm:self-auto">
+                        {canDrag && (
+                          <span
+                            draggable
+                            onDragStart={(event) => handleDragStart(event, task.id)}
+                            onDragEnd={handleDragEnd}
+                            aria-hidden="true"
+                            title="Drag to reorder"
+                            className="inline-flex cursor-grab select-none items-center rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-300 active:cursor-grabbing"
+                          >
+                            ⋮⋮
+                          </span>
+                        )}
+
+                        {canReorder && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => moveTaskByOffset(task.id, -1)}
+                              disabled={index === 0}
+                              aria-label={`Move ${task.title} up`}
+                              className="rounded-lg border border-slate-600 px-4 py-2 text-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveTaskByOffset(task.id, 1)}
+                              disabled={index === tasks.length - 1}
+                              aria-label={`Move ${task.title} down`}
+                              className="rounded-lg border border-slate-600 px-4 py-2 text-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              ↓
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => startEditing(task)}
