@@ -542,7 +542,7 @@ function App() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2 self-end sm:self-auto">
+                      <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
                         {canDrag && (
                           <span
                             draggable

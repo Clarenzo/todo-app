@@ -1,75 +1,59 @@
-# React + TypeScript + Vite
+# My To-Do App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A browser-based to-do application built as a frontend learning project. It helps one person organize tasks by priority, track progress and keep tasks available after refreshing the page.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Add, view, edit, complete and delete tasks.
+- Add optional descriptions and due dates.
+- Assign low, medium or high priority.
+- Filter by completion status and priority.
+- Reorder tasks with desktop drag-and-drop or Up/Down controls.
+- Save tasks and their order in the browser with `localStorage`.
+- Use the app on desktop and narrow screens.
 
-## React Compiler
+Reordering is available when bith filters are set to **All**. The Up/Down controls also provide a keyboard and touch-friendly alternative to dragging.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech stack
 
-## Expanding the ESLint configuration
+React, Vite, TypeScript, Tailwind CSS and browser `localStorage`. Git and Github are used for version control.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Run locally
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Clone or download the repository, open its folder in VS Code and run:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm ci
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Open the local URL shown in the terminal. This project was developed using Node.js v24.16.0.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+To check the project:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm run build
+npm run lint
 ```
+
+## Project structure
+
+- `src/App.tsx` - interface, task actions, filters and reordering.
+- `src/types/task.ts` - task and priority types.
+- `src/lib/taskStorage.ts` - loading and saving tasks.
+- `docs/PROJECT_BRIEF.md` - project scope and acceptance criteria.
+- `docs/TEST_PLAN.md` - manual test checklist.
+
+## Storage and limitations
+
+Tasks are saved in `localStorage` for the current browser and site. They do not sync between devices. Clearing site data can remove them; do not use the app for sensitive information. Filter selections reset to All after a refresh.
+
+This is a frontend-only project: it has no accounts, backend, database, sharing or notifications.
+
+## Testing
+
+Follow the manual checks in `docs/TEST_PLAN.md`, then run `npm run build` and `npm run lint`. An automated test suite is not included in this beginner version.
+
+## Possible future improvements
+
+Automated tests, task export/import and touch-enabled dragging.
